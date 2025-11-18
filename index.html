@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Hick's Law – Color Mapping Task</title>
+    <style>
+        body { text-align: center; font-family: Arial; background: #f5f5f5; }
+        #stimulus {
+            width: 150px; height: 150px; border-radius: 50%;
+            margin: 50px auto; display: none;
+        }
+        button { padding: 12px 20px; font-size: 18px; margin-top: 20px; }
+        table { margin: 0 auto; border-collapse: collapse; }
+        td, th { padding: 8px 12px; border: 1px solid #333; }
+        h2 { margin-top: 30px; }
+        #keyMappings { margin-top: 20px; }
+        #countdown { font-size: 32px; margin-top: 20px; color: #333; }
+        .highlight { background-color: #8fbc8f; } /* green highlight */
+    </style>
+</head>
+<body>
+
+<h1>Hick's Law Reaction Time Test</h1>
+
+<div id="instructions">
+    <h2>Instructions</h2>
+    <p><b>Condition A (Simple):</b> Press the first letter of the circle's color.</p>
+    <table>
+        <tr><th>Circle Color</th><th>Key to Press</th></tr>
+        <tr><td>Red</td><td>R</td></tr>
+        <tr><td>Blue</td><td>B</td></tr>
+        <tr><td>Green</td><td>G</td></tr>
+        <tr><td>Yellow</td><td>Y</td></tr>
+    </table>
+
+    <p><b>Condition B (Complex):</b> Use the rule-based mapping using the same keys as Condition A.</p>
+    <table>
+        <tr><th>Circle Color</th><th>Key to Press</th></tr>
+        <tr><td>Red</td><td>G</td></tr>
+        <tr><td>Blue</td><td>Y</td></tr>
+        <tr><td>Green</td><td>R</td></tr>
+        <tr><td>Yellow</td><td>B</td></tr>
+    </table>
+
+    <p>Each condition will have <b>1 practice trial</b> followed by a <b>15-second main trial</b>. Respond as quickly and accurately as possible. The circle will stay on screen until you press a key. Correct responses will be highlighted in green briefly.</p>
+
+    <button onclick="startExperiment()">Start Experiment</button>
+</div>
+
+<div id="countdown"></div>
+<div id="stimulus"></div>
+<div id="keyMappings"></div>
+<h2 id="status"></h2>
+
+<script>
+let conditions = ["simple", "complex"];
+let currentConditionIndex = 0;
+
+let trialRunning = false;
+let practiceTrial = true;
+let expectedKey = "";
+let startTime = 0;
+let rtData = [];
+
+let colors = ["red", "blue", "green", "yellow"];
+
+// Key mappings
+let simpleKeys = { red: "r", blue: "b", green: "g", yellow: "y" };
+let complexKeys = { red: "g", blue: "y", green: "r", yellow: "b" };
+
+let trialCountdownInterval;
+
+function startExperiment() {
+    document.getElementById("instructions").style.display = "none";
+    currentConditionIndex = 0;
+    practiceTrial = true;
+    showKeyMappings("simple");
+    startCountdown();
+}
+
+function showKeyMappings(condition) {
+    let mappings = (condition === "simple") ? simpleKeys : complexKeys;
+    let html = "<h3>Key Mappings</h3><table id='mappingTable'><tr><th>Color</th><th>Key</th></tr>";
+    for (let color in mappings) {
+        html += `<tr id='row-${color}'><td>${color.charAt(0).toUpperCase() + color.slice(1)}</td><td>${mappings[color].toUpperCase()}</td></tr>`;
+    }
+    html += "</table>";
+    document.getElementById("keyMappings").innerHTML = html;
+}
+
+function startCountdown() {
+    let countdownDiv = document.getElementById("countdown");
+    let count = 3;
+    countdownDiv.innerHTML = `Starting in ${count}...`;
+    let countdownInterval = setInterval(() => {
+        count--;
+        if (count > 0) {
+            countdownDiv.innerHTML = `Starting in ${count}...`;
+        } else {
+            clearInterval(countdownInterval);
+            countdownDiv.innerHTML = "";
+            runCondition();
+        }
+    }, 1000);
+}
+
+function runCondition() {
+    let condition = conditions[currentConditionIndex];
+    let duration = practiceTrial ? 10000 : 15000; // practice 10s, main 15s
+
+    trialRunning = true;
+    let start = Date.now();
+
+    document.getElementById("status").innerHTML = practiceTrial
+        ? "Practice Trial for Condition " + (condition === "simple" ? "A: Simple Mapping" : "B: Complex Mapping")
+        : "Main Trial for Condition " + (condition === "simple" ? "A: Simple Mapping" : "B: Complex Mapping");
+
+    showStimulus(condition);
+
+    // Show countdown timer in seconds
+    trialCountdownInterval = setInterval(() => {
+        let elapsed = Math.floor((Date.now() - start) / 1000);
+        let remaining = Math.ceil((duration - (Date.now() - start)) / 1000);
+        document.getElementById("countdown").innerHTML = `Time left: ${remaining}s`;
+
+        if (Date.now() - start >= duration) {
+            clearInterval(trialCountdownInterval);
+            trialRunning = false;
+            document.getElementById("stimulus").style.display = "none";
+            document.getElementById("countdown").innerHTML = "";
+
+            if (practiceTrial) {
+                practiceTrial = false;
+                showKeyMappings(condition);
+                startCountdown();
+            } else {
+                currentConditionIndex++;
+                if (currentConditionIndex < conditions.length) {
+                    practiceTrial = true;
+                    showKeyMappings(conditions[currentConditionIndex]);
+                    startCountdown();
+                } else {
+                    showResults();
+                }
+            }
+        }
+    }, 100);
+}
+
+function showStimulus(condition) {
+    let stim = document.getElementById("stimulus");
+    stim.style.display = "block";
+
+    let color = colors[Math.floor(Math.random() * colors.length)];
+    stim.style.background = color;
+
+    expectedKey = (condition === "simple") ? simpleKeys[color] : complexKeys[color];
+    startTime = Date.now();
+}
+
+document.addEventListener("keydown", (e) => {
+    if (!trialRunning) return;
+
+    let pressedKey = e.key.toLowerCase();
+
+    if (pressedKey === expectedKey) {
+        // Record reaction time
+        let rt = Date.now() - startTime;
+        rtData.push({ condition: conditions[currentConditionIndex], rt: rt });
+
+        // Highlight correct key in green briefly
+        let colorName = Object.keys((conditions[currentConditionIndex] === "simple") ? simpleKeys : complexKeys)
+            .find(key => ((conditions[currentConditionIndex] === "simple") ? simpleKeys : complexKeys)[key] === pressedKey);
+        let row = document.getElementById(`row-${colorName}`);
+        if (row) {
+            row.classList.add("highlight");
+            setTimeout(() => row.classList.remove("highlight"), 300);
+        }
+    }
+
+    // Show next stimulus after key press
+    showStimulus(conditions[currentConditionIndex]);
+});
+
+function showResults() {
+    document.body.innerHTML = `
+        <h1>Results</h1>
+        <p><b>Simple Mean RT:</b> ${meanRT("simple")} ms</p>
+        <p><b>Complex Mean RT:</b> ${meanRT("complex")} ms</p>
+        <button onclick="downloadCSV()">Download CSV</button>
+    `;
+}
+
+function meanRT(cond) {
+    let arr = rtData.filter(x => x.condition === cond).map(x => x.rt);
+    if (arr.length === 0) return 0;
+    return (arr.reduce((a,b) => a + b, 0) / arr.length).toFixed(2);
+}
+
+function downloadCSV() {
+    let csv = "condition,rt\n";
+    rtData.forEach(row => csv += `${row.condition},${row.rt}\n`);
+    let blob = new Blob([csv], { type: "text/csv" });
+    let url = URL.createObjectURL(blob);
+    let a = document.createElement("a");
+    a.href = url;
+    a.download = "reaction_time_data.csv";
+    a.click();
+}
+</script>
+
+</body>
+</html>
