@@ -1,29 +1,78 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Hick's Law – Color Mapping Task</title>
-    <style>
-        body { text-align: center; font-family: Arial; background: #f5f5f5; }
-        #stimulus {
-            width: 150px; height: 150px; border-radius: 50%;
-            margin: 50px auto; display: none;
-        }
-        button { padding: 12px 20px; font-size: 18px; margin-top: 20px; }
-        table { margin: 0 auto; border-collapse: collapse; }
-        td, th { padding: 8px 12px; border: 1px solid #333; }
-        h2 { margin-top: 30px; }
-        #keyMappings { margin-top: 20px; }
-        #countdown { font-size: 32px; margin-top: 20px; color: #333; }
-        .highlight { background-color: #8fbc8f; } /* green highlight */
-    </style>
+<meta charset="utf-8" />
+<title>SR Compatibility Response Time Test</title>
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+        background: #d9e3f0; /* light blue-gray */
+        color: black;
+        padding: 20px;
+    }
+
+    h1, h2 {
+        color: #3f6ecf; /* medium blue headings */
+    }
+
+    #stimulus {
+        width: 150px;
+        height: 150px;
+        border-radius: 50%;
+        margin: 30px auto;
+        display: none;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    }
+
+    table {
+        margin: 12px auto;
+        border-collapse: collapse;
+        background: #fafafa;
+    }
+
+    td, th {
+        padding: 8px 12px;
+        border: 1px solid black; /* black borders */
+    }
+
+    #countdown {
+        font-size: 20px;
+        margin-top: 12px;
+        color: #333;
+    }
+
+    button {
+        padding: 10px 18px;
+        font-size: 16px;
+        background: #4b79c9; /* medium blue */
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        margin-top: 10px;
+    }
+
+    button:hover {
+        background: #3c63a8; /* darker blue hover */
+    }
+
+    .highlight {
+        background: #c8f0c1 !important; /* green highlight */
+    }
+</style>
 </head>
+
 <body>
 
-<h1>Hick's Law Reaction Time Test</h1>
+<h1>SR Compatibility Response Time Test</h1>
 
 <div id="instructions">
     <h2>Instructions</h2>
-    <p><b>Condition A (Simple):</b> Press the first letter of the circle's color.</p>
+
+    <p><strong>Condition A (Simple Mapping):</strong> Press the first letter of the circle’s color.</p>
+
     <table>
         <tr><th>Circle Color</th><th>Key to Press</th></tr>
         <tr><td>Red</td><td>R</td></tr>
@@ -32,181 +81,220 @@
         <tr><td>Yellow</td><td>Y</td></tr>
     </table>
 
-    <p><b>Condition B (Complex):</b> Use the rule-based mapping using the same keys as Condition A.</p>
+    <p><strong>Condition B (Complex Mapping):</strong> Use this altered color–key pairing.</p>
+
     <table>
         <tr><th>Circle Color</th><th>Key to Press</th></tr>
-        <tr><td>Red</td><td>G</td></tr>
-        <tr><td>Blue</td><td>Y</td></tr>
-        <tr><td>Green</td><td>R</td></tr>
-        <tr><td>Yellow</td><td>B</td></tr>
+        <tr><td>Red</td><td>B</td></tr>
+        <tr><td>Blue</td><td>G</td></tr>
+        <tr><td>Green</td><td>Y</td></tr>
+        <tr><td>Yellow</td><td>R</td></tr>
     </table>
 
-    <p>Each condition will have <b>1 practice trial</b> followed by a <b>15-second main trial</b>. Respond as quickly and accurately as possible. The circle will stay on screen until you press a key. Correct responses will be highlighted in green briefly.</p>
+    <p>You will complete:<br>
+    • 1 practice trial for each condition (10 seconds each)<br>
+    • A 15-second main trial for each condition<br>
+    The circle only changes after you press the correct key. Practice trials are not included in the final averages.</p>
 
-    <button onclick="startExperiment()">Start Experiment</button>
+    <button onclick="SR_startExperiment()">Start Experiment</button>
 </div>
 
 <div id="countdown"></div>
 <div id="stimulus"></div>
 <div id="keyMappings"></div>
-<h2 id="status"></h2>
+<div id="status"></div>
 
 <script>
-let conditions = ["simple", "complex"];
-let currentConditionIndex = 0;
+const SR_conditions = [
+    "simple_practice",
+    "simple_main",
+    "complex_practice",
+    "complex_main"
+];
 
-let trialRunning = false;
-let practiceTrial = true;
-let expectedKey = "";
-let startTime = 0;
-let rtData = [];
+let SR_index = 0;
+let SR_running = false;
+let SR_isPractice = true;
+let SR_startTime = 0;
+let SR_expectedKey = "";
+let SR_rtData = [];     
+let SR_allData = [];    
 
-let colors = ["red", "blue", "green", "yellow"];
+const SR_colors = ["red","blue","green","yellow"];
 
-// Key mappings
-let simpleKeys = { red: "r", blue: "b", green: "g", yellow: "y" };
-let complexKeys = { red: "g", blue: "y", green: "r", yellow: "b" };
+const SR_simpleKeys = { red:"r", blue:"b", green:"g", yellow:"y" };
+const SR_complexKeys = { red:"b", blue:"g", green:"y", yellow:"r" };
 
-let trialCountdownInterval;
+const instrDiv = document.getElementById("instructions");
+const stimDiv = document.getElementById("stimulus");
+const keyMapDiv = document.getElementById("keyMappings");
+const countdownDiv = document.getElementById("countdown");
+const statusDiv = document.getElementById("status");
 
-function startExperiment() {
-    document.getElementById("instructions").style.display = "none";
-    currentConditionIndex = 0;
-    practiceTrial = true;
-    showKeyMappings("simple");
-    startCountdown();
+function SR_startExperiment(){
+    instrDiv.style.display = "none";
+    SR_index = 0;
+    SR_runNextCondition();
 }
 
-function showKeyMappings(condition) {
-    let mappings = (condition === "simple") ? simpleKeys : complexKeys;
-    let html = "<h3>Key Mappings</h3><table id='mappingTable'><tr><th>Color</th><th>Key</th></tr>";
-    for (let color in mappings) {
-        html += `<tr id='row-${color}'><td>${color.charAt(0).toUpperCase() + color.slice(1)}</td><td>${mappings[color].toUpperCase()}</td></tr>`;
-    }
+function SR_showKeyMappings(type){
+    const map = (type === "simple") ? SR_simpleKeys : SR_complexKeys;
+    let html = "<h3>Key Mappings</h3><table><tr><th>Color</th><th>Key</th></tr>";
+    for (let c in map) html += `<tr id="row-${c}"><td>${c.charAt(0).toUpperCase() + c.slice(1)}</td><td>${map[c].toUpperCase()}</td></tr>`;
     html += "</table>";
-    document.getElementById("keyMappings").innerHTML = html;
+    keyMapDiv.innerHTML = html;
 }
 
-function startCountdown() {
-    let countdownDiv = document.getElementById("countdown");
-    let count = 3;
-    countdownDiv.innerHTML = `Starting in ${count}...`;
-    let countdownInterval = setInterval(() => {
-        count--;
-        if (count > 0) {
-            countdownDiv.innerHTML = `Starting in ${count}...`;
-        } else {
-            clearInterval(countdownInterval);
-            countdownDiv.innerHTML = "";
-            runCondition();
+function SR_startTransition(next){
+    let sec = 5;
+    countdownDiv.textContent = `Starting in ${sec}...`;
+    let t = setInterval(() => {
+        sec--;
+        if (sec > 0) countdownDiv.textContent = `Starting in ${sec}...`;
+        else {
+            clearInterval(t);
+            countdownDiv.textContent = "";
+            next();
         }
     }, 1000);
 }
 
-function runCondition() {
-    let condition = conditions[currentConditionIndex];
-    let duration = practiceTrial ? 10000 : 15000; // practice 10s, main 15s
+function SR_runNextCondition(){
+    stimDiv.style.display = "none";
+    keyMapDiv.innerHTML = "";
+    statusDiv.innerHTML = "";
 
-    trialRunning = true;
-    let start = Date.now();
+    if (SR_index >= SR_conditions.length){
+        SR_showFinalResults();
+        return;
+    }
 
-    document.getElementById("status").innerHTML = practiceTrial
-        ? "Practice Trial for Condition " + (condition === "simple" ? "A: Simple Mapping" : "B: Complex Mapping")
-        : "Main Trial for Condition " + (condition === "simple" ? "A: Simple Mapping" : "B: Complex Mapping");
+    const cond = SR_conditions[SR_index];
+    SR_isPractice = cond.includes("practice");
 
-    showStimulus(condition);
+    let label = cond === "simple_practice" ? "Practice Trial — Condition A (Simple Mapping)"
+              : cond === "simple_main"     ? "Main Trial — Condition A (Simple Mapping)"
+              : cond === "complex_practice"? "Practice Trial — Condition B (Complex Mapping)"
+              :                               "Main Trial — Condition B (Complex Mapping)";
 
-    // Show countdown timer in seconds
-    trialCountdownInterval = setInterval(() => {
-        let elapsed = Math.floor((Date.now() - start) / 1000);
-        let remaining = Math.ceil((duration - (Date.now() - start)) / 1000);
-        document.getElementById("countdown").innerHTML = `Time left: ${remaining}s`;
+    statusDiv.innerHTML = `<h2>${label}</h2>`;
+    SR_showKeyMappings(cond.includes("simple") ? "simple" : "complex");
 
-        if (Date.now() - start >= duration) {
-            clearInterval(trialCountdownInterval);
-            trialRunning = false;
-            document.getElementById("stimulus").style.display = "none";
-            document.getElementById("countdown").innerHTML = "";
-
-            if (practiceTrial) {
-                practiceTrial = false;
-                showKeyMappings(condition);
-                startCountdown();
-            } else {
-                currentConditionIndex++;
-                if (currentConditionIndex < conditions.length) {
-                    practiceTrial = true;
-                    showKeyMappings(conditions[currentConditionIndex]);
-                    startCountdown();
-                } else {
-                    showResults();
-                }
-            }
-        }
-    }, 100);
+    SR_startTransition(() => {
+        if (cond.includes("practice")) SR_startTrial(cond, 10000);
+        else SR_startTrial(cond, 15000);
+    });
 }
 
-function showStimulus(condition) {
-    let stim = document.getElementById("stimulus");
-    stim.style.display = "block";
+let SR_trialTimer = null;
+let SR_timeLeftTimer = null;
 
-    let color = colors[Math.floor(Math.random() * colors.length)];
-    stim.style.background = color;
+function SR_startTrial(cond, duration){
+    countdownDiv.textContent = "";
 
-    expectedKey = (condition === "simple") ? simpleKeys[color] : complexKeys[color];
-    startTime = Date.now();
+    stimDiv.style.display = "block";
+    keyMapDiv.style.display = "block";
+    SR_running = true;
+
+    SR_presentStimulus(cond);
+
+    let endTime = Date.now() + duration;
+    countdownDiv.textContent = `Time left: ${Math.ceil((endTime - Date.now())/1000)} sec`;
+
+    SR_timeLeftTimer = setInterval(() => {
+        const secs = Math.max(0, Math.ceil((endTime - Date.now())/1000));
+        countdownDiv.textContent = `Time left: ${secs} sec`;
+        if (secs <= 0) clearInterval(SR_timeLeftTimer);
+    }, 250);
+
+    SR_trialTimer = setTimeout(() => {
+        SR_endTrial(cond);
+    }, duration);
 }
 
-document.addEventListener("keydown", (e) => {
-    if (!trialRunning) return;
+function SR_presentStimulus(cond){
+    const color = SR_colors[Math.floor(Math.random()*SR_colors.length)];
+    stimDiv.style.background = color;
+    SR_expectedKey = cond.includes("simple") ? SR_simpleKeys[color] : SR_complexKeys[color];
+    SR_startTime = performance.now();
+}
 
-    let pressedKey = e.key.toLowerCase();
+document.addEventListener("keydown", (ev) => {
+    if (!SR_running) return;
 
-    if (pressedKey === expectedKey) {
-        // Record reaction time
-        let rt = Date.now() - startTime;
-        rtData.push({ condition: conditions[currentConditionIndex], rt: rt });
+    const key = ev.key.toLowerCase();
+    if (key !== SR_expectedKey) return;
 
-        // Highlight correct key in green briefly
-        let colorName = Object.keys((conditions[currentConditionIndex] === "simple") ? simpleKeys : complexKeys)
-            .find(key => ((conditions[currentConditionIndex] === "simple") ? simpleKeys : complexKeys)[key] === pressedKey);
-        let row = document.getElementById(`row-${colorName}`);
+    const rt = performance.now() - SR_startTime;
+
+    SR_allData.push({
+        condition: SR_conditions[SR_index],
+        practice: SR_isPractice,
+        rt: rt
+    });
+
+    if (!SR_isPractice) SR_rtData.push({ condition: SR_conditions[SR_index], rt: rt });
+
+    let cMap = SR_conditions[SR_index].includes("simple") ? SR_simpleKeys : SR_complexKeys;
+    let colorName = Object.keys(cMap).find(k => cMap[k] === key);
+    if (colorName) {
+        const row = document.getElementById(`row-${colorName}`);
         if (row) {
             row.classList.add("highlight");
             setTimeout(() => row.classList.remove("highlight"), 300);
         }
     }
 
-    // Show next stimulus after key press
-    showStimulus(conditions[currentConditionIndex]);
+    SR_presentStimulus(SR_conditions[SR_index]);
 });
 
-function showResults() {
+function SR_endTrial(cond){
+    SR_running = false;
+    stimDiv.style.display = "none";
+    clearInterval(SR_trialTimer);
+    clearInterval(SR_timeLeftTimer);
+    countdownDiv.textContent = "";
+
+    if (!SR_isPractice) {
+        const filtered = SR_rtData.filter(d => d.condition === cond).map(d => d.rt);
+        const avg = filtered.length ? (filtered.reduce((a,b)=>a+b,0)/filtered.length).toFixed(2) : "No responses";
+        statusDiv.innerHTML += `<p><strong>Average Reaction Time:</strong> ${avg} ms</p>`;
+    } else {
+        statusDiv.innerHTML += `<p><em>Practice trial complete (not included in averages).</em></p>`;
+    }
+
+    SR_index++;
+    setTimeout(() => SR_runNextCondition(), 5000);
+}
+
+function SR_showFinalResults(){
+    const simpleArr = SR_rtData.filter(d => d.condition === "simple_main").map(d => d.rt);
+    const complexArr = SR_rtData.filter(d => d.condition === "complex_main").map(d => d.rt);
+
+    const mean = arr => arr.length ? (arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(2) : "No responses";
+
     document.body.innerHTML = `
         <h1>Results</h1>
-        <p><b>Simple Mean RT:</b> ${meanRT("simple")} ms</p>
-        <p><b>Complex Mean RT:</b> ${meanRT("complex")} ms</p>
-        <button onclick="downloadCSV()">Download CSV</button>
+        <p><b>Simple Mapping Mean RT:</b> ${mean(simpleArr)} ms</p>
+        <p><b>Complex Mapping Mean RT:</b> ${mean(complexArr)} ms</p>
+        <button onclick="SR_downloadCSV()">Download CSV</button>
+        <p><em>Practice trials were excluded from averages.</em></p>
     `;
 }
 
-function meanRT(cond) {
-    let arr = rtData.filter(x => x.condition === cond).map(x => x.rt);
-    if (arr.length === 0) return 0;
-    return (arr.reduce((a,b) => a + b, 0) / arr.length).toFixed(2);
-}
-
-function downloadCSV() {
-    let csv = "condition,rt\n";
-    rtData.forEach(row => csv += `${row.condition},${row.rt}\n`);
-    let blob = new Blob([csv], { type: "text/csv" });
-    let url = URL.createObjectURL(blob);
-    let a = document.createElement("a");
+function SR_downloadCSV(){
+    let csv = "condition,rtn";
+    SR_rtData.forEach(r => csv += `${r.condition},${r.rt}n`);
+    const blob = new Blob([csv], {type: "text/csv"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
     a.href = url;
-    a.download = "reaction_time_data.csv";
+    a.download = "sr_compatibility_main_trials.csv";
     a.click();
 }
 </script>
-
 </body>
 </html>
+
+
+
